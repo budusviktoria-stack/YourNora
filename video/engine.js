@@ -265,6 +265,43 @@ function nora(o = {}) {
   `, `transform="translate(${x} ${y}) rotate(${tilt}) scale(${s})"`);
 }
 
+// Нора со спины (у окна). arm: поднятая рука, касается стекла.
+function noraBack(o = {}) {
+  const { x = 540, y = 1350, s = 1, sweater = C.sweater, arm = true } = o;
+  return g(`
+    <path d="M-330 700 C-340 260 -250 140 -110 120 L110 120 C250 140 340 260 330 700 Z" fill="${sweater}"/>
+    ${arm ? `<path d="M200 170 C300 120 330 -60 300 -250 L245 -262 C260 -90 240 40 150 120 Z" fill="${sweater}"/>
+    <ellipse cx="274" cy="-290" rx="38" ry="52" fill="${C.skin}"/>` : ''}
+    <path d="M-170 -150 C-200 -400 200 -400 170 -150 C190 0 205 250 190 520 Q0 560 -190 520 C-205 250 -190 0 -170 -150 Z" fill="url(#gHair)"/>
+    <path d="M-90 -300 C-120 -100 -110 200 -95 480 M0 -330 L0 500 M90 -300 C120 -100 110 200 95 480" stroke="${C.hairDark}" stroke-width="5" fill="none" opacity=".35"/>
+  `, `transform="translate(${x} ${y}) scale(${s})"`);
+}
+
+// Страница дневника на столе: строки пишутся по буквам между t0 и t1.
+function diaryPage(t, lt, lines, t0, t1) {
+  const full = lines.join('\n');
+  const shown = full.slice(0, Math.round(full.length * clamp((t - t0) / (t1 - t0))));
+  let out = '', rules = '';
+  shown.split('\n').forEach((l, i) => { out += `<text x="330" y="${700 + i * 78}" font-family="Caveat" font-weight="700" font-size="60" fill="${C.ink}">${esc(l)}</text>`; });
+  for (let i = 0; i < 11; i++) rules += `<line x1="250" y1="${720 + i * 78}" x2="860" y2="${720 + i * 78}" stroke="#b9c7de" stroke-width="2"/>`;
+  return `
+    <rect width="${W}" height="${H}" fill="url(#gWood)"/>
+    <path d="M0 300 L1080 260 M0 820 L1080 780 M0 1340 L1080 1300" stroke="#2e1e15" stroke-width="4" opacity=".35"/>
+    <circle cx="820" cy="300" r="560" fill="url(#gLamp)"/>
+    <path d="M880 1500 L1080 1360 L1080 1700 Z" fill="#3d4a6b"/>
+    <path d="M900 1530 L1080 1420" stroke="#2c3652" stroke-width="10"/>
+    <g transform="rotate(-3 550 960) translate(0 ${(1 - easeOut(seg(lt, 0, 0.6))) * 60})">
+      <rect x="215" y="480" width="670" height="980" rx="6" fill="${C.cream}" filter="url(#fShadow)"/>
+      ${rules}
+      <line x1="290" y1="480" x2="290" y2="1460" stroke="#e7a0a0" stroke-width="3"/>
+      <rect x="700" y="455" width="150" height="50" rx="8" fill="#fff" opacity=".75" transform="rotate(8 775 480)"/>
+      ${out}
+    </g>
+    <path d="M640 1610 L960 1470" stroke="#3e5486" stroke-width="16" stroke-linecap="round"/>
+    <path d="M640 1610 L668 1598" stroke="#d9c7a0" stroke-width="16" stroke-linecap="round"/>
+    ${bunny(170, 1700, 1.25)}`;
+}
+
 // Моргание: короткие закрытия глаз в заданные моменты.
 const blinkAt = (t, times) => times.some(b => t >= b && t < b + 0.14);
 

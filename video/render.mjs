@@ -46,7 +46,7 @@ if (stills) {
   process.exit(0);
 }
 
-const duration = await (await openPage(browser)).evaluate(() => window.EPISODE.duration);
+const { duration, gaps } = await (await openPage(browser)).evaluate(() => ({ duration: window.EPISODE.duration, gaps: window.AUDIO_GAPS || [] }));
 const total = Math.round(duration * FPS);
 const workers = Number(opt('--workers') || Math.max(1, Math.min(4, os.cpus().length - 1)));
 const tmp = path.join(outDir, `.${ep}-parts`);
@@ -81,7 +81,20 @@ for (const kind of ['subs', 'clean']) {
   const list = path.join(tmp, `${kind}.txt`);
   writeFileSync(list, [...Array(workers).keys()].map(w => `file '${kind}-${w}.mp4'`).join('\n'));
   const name = kind === 'subs' ? `${ep}.mp4` : `${ep}-clean.mp4`;
-  const a = audio ? ['-i', path.resolve(audio), '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-af', 'apad', '-shortest'] : [];
+  // Паузы из AUDIO_GAPS: режем озвучку в точке и вставляем тишину.
+  let af = 'apad';
+  if (gaps.length) {
+    const cuts = [0, ...gaps.map(g => g[0])];
+    const parts = cuts.map((c, k) => {
+      const end = k + 1 < cuts.length ? `:end=${cuts[k + 1]}` : '';
+      const delay = k > 0 ? `,adelay=${Math.round(gaps[k - 1][1] * 1000)}:all=1` : '';
+      return `[1:a]atrim=start=${c}${end},asetpts=PTS-STARTPTS${delay}[p${k}]`;
+    });
+    af = parts.join(';') + ';' + cuts.map((_, k) => `[p${k}]`).join('') + `concat=n=${cuts.length}:v=0:a=1,apad[aout]`;
+  }
+  const a = !audio ? [] : gaps.length
+    ? ['-i', path.resolve(audio), '-filter_complex', af, '-map', '0:v', '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k', '-shortest']
+    : ['-i', path.resolve(audio), '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-af', af, '-shortest'];
   const { done } = ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, ...a, '-c:v', 'copy', '-movflags', '+faststart', path.join(outDir, name)]);
   await done;
 }

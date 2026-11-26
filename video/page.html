@@ -22,17 +22,17 @@
 <script src="engine.js"></script>
 <script>
   const ep = new URLSearchParams(location.search).get('ep') || 'ep02';
-  const s = document.createElement('script');
-  s.src = 'episodes/' + ep + '.js';
-  s.onload = async () => {
+  const load = src => new Promise(res => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = res; document.body.appendChild(el); });
+  (async () => {
+    await load('episodes/' + ep + '.captions.js'); // необязательный файл с таймингами (tools/align.py)
+    await load('episodes/' + ep + '.js');
     // Force every font face to load before the first frame.
     const probe = ['Nunito', 'Caveat'].flatMap(f => [400, 600, 700, 800].map(w => `${w} 40px ${f}`));
     await Promise.all(probe.flatMap(p => [document.fonts.load(p, 'абв abc'), document.fonts.load(p, 'xyz')]));
     await document.fonts.ready;
     window.render(0, { captions: true });
     window.ready = true;
-  };
-  document.body.appendChild(s);
+  })();
 </script>
 </body>
 </html>
